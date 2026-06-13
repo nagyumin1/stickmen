@@ -9,9 +9,9 @@ st.set_page_config(
 )
 
 st.title("✏️ Animation vs. Streamlit")
-st.caption("텍스트 가위질 버그를 완전히 박멸한 최종 프로토타입입니다!")
+st.caption("인코딩 가위질을 완벽하게 우회한 마스터피스 버전입니다.")
 
-# 스트림릿 기본 UI 배치
+# 스트림릿 대시보드 UI 배치
 col1, col2, col3 = st.columns(3)
 with col1:
     st.metric(label="현재 액티브 스틱맨", value="4 마리", delta="▲ 4")
@@ -22,17 +22,12 @@ with col3:
 
 st.text_area("방명록 낙서장", "스틱맨들이 이 글자 위를 밟고 지나갑니다.")
 
-# 2. 해결책: 파이썬 문자열 리터럴을 쓰지 않고 byte 배열을 직접 조인하여 HTML 생성
-# 이렇게 하면 스트림릿 배포 시스템이 문법 검사(Syntax) 단계에서 코드를 찢을 수 없습니다.
-byte_pieces = [
-    b'<div id="canvas-container" style="position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;"><canvas id="stickmanCanvas"></canvas></div>',
-    b'<script>',
-    b'const canvas=document.getElementById("stickmanCanvas");const ctx=canvas.getContext("2d");',
-    b'function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}',
-    b'window.addEventListener("resize",resizeCanvas);resizeCanvas();',
-    b'let mouse={x:window.innerWidth/2,y:window.innerHeight/2};',
-    b'window.addEventListener("mousemove",(e)=>{mouse.x=e.clientX;mouse.y=e.clientY});',
-    b'try{window.parent.addEventListener("mousemove",(e)=>{mouse.x=e.clientX;mouse.y=e.clientY})}catch(err){}',
-    b'class Stickman{constructor(x,y,color){this.x=x;this.y=y;this.color=color;this.size=12;this.vx=(Math.random()-0.5)*5;this.vy=(Math.random()-0.5)*5;this.angle=0;this.targetX=mouse.x;this.targetY=mouse.y}',
-    b'update(){if(Math.random()<0.03){this.targetX=mouse.x+(Math.random()-0.5)*300;this.targetY=mouse.y+(Math.random()-0.5)*300}let dx=this.targetX-this.x;let dy=this.targetY-this.y;let dist=Math.sqrt(dx*dx+dy*dy);if(dist>30){this.vx+=(dx/dist)*0.25;this.vy+=(dy/dist)*0.25}this.vx*=0.97;this.vy*=0.97;this.x+=this.vx;this.y+=this.vy;if(this.x<40||this.x>canvas.width-40)this.vx*=-1;if(this.y<40||this.y>canvas.height-40)this.vy*=-1;this.angle+=Math.sqrt(this.vx*this.vx+this.vy*this.vy)*0.06}',
-    b'draw(){ctx.strokeStyle=this.color;ctx.lineWidth=3;
+# 2. 해결책: 특수문자를 아예 안 쓰고 오직 정수(Int) 배열로만 코드를 저장!
+# 서버가 줄바꿈을 쑤셔넣거나 따옴표를 찢을 빌미를 원천 차단합니다.
+hex_data = [
+    60, 100, 105, 118, 32, 105, 100, 61, 34, 99, 97, 110, 118, 97, 115, 45, 99, 111, 110, 116, 97, 105, 
+    110, 101, 114, 34, 32, 115, 116, 121, 108, 101, 61, 34, 112, 111, 115, 105, 116, 105, 111, 110, 58, 
+    102, 105, 120, 101, 100, 59, 116, 111, 112, 58, 48, 59, 108, 101, 102, 116, 58, 48, 59, 119, 105, 
+    100, 116, 104, 58, 49, 48, 48, 118, 119, 59, 104, 101, 105, 103, 104, 116, 58, 49, 48, 48, 118, 104, 
+    59, 112, 111, 105, 110, 116, 101, 114, 45, 101, 118, 101, 110, 116, 115, 58, 110, 111, 110, 101, 59, 
+    122, 45, 105, 110, 100, 101, 120, 58, 57, 57, 57,
