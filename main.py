@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import base64
 
 # 1. 스트림릿 페이지 기본 설정
 st.set_page_config(
@@ -23,8 +24,7 @@ with col3:
 
 st.text_area("방명록 낙서장", "여기에 글을 쓰면 스틱맨들이 밟고 지나갈지도 모릅니다...")
 
-# 3. 핵심: 스틱맨들을 자유롭게 움직이게 할 Canvas + JS 인젝션
-# 스트림릿 화면 전체를 덮는 투명 canvas를 생성하여 애니메이션을 구현합니다.
+# 3. 원본 HTML/JS 코드를 글자 깨짐 현상 없이 안전하게 주입하기 위해 포장
 stickman_html = """
 <div id="canvas-container" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;">
     <canvas id="stickmanCanvas"></canvas>
@@ -42,7 +42,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// 마우스 위치 추적 (Alan Becker 작품 특유의 '마우스 커서 공격'용)
+// 마우스 위치 추적
 let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 window.parent.addEventListener('mousemove', (e) => {
     mouse.x = e.clientX;
@@ -115,94 +115,3 @@ class Stickman {
 
         // 3. 팔 그리기 (달리는 모션 반영)
         let leftHandX = this.x - this.size * 1.5 * Math.sin(this.angle);
-        let leftHandY = bodyY + this.size * Math.cos(this.angle) + 5;
-        let rightHandX = this.x + this.size * 1.5 * Math.sin(this.angle);
-        let rightHandY = bodyY - this.size * Math.cos(this.angle) + 5;
-
-        ctx.beginPath();
-        ctx.moveTo(this.x, bodyY + 5);
-        ctx.lineTo(leftHandX, leftHandY);
-        ctx.moveTo(this.x, bodyY + 5);
-        ctx.lineTo(rightHandX, rightHandY);
-        ctx.stroke();
-
-        // 4. 다리 그리기 (달리는 모션 반영)
-        let leftFootX = this.x - this.size * 1.5 * Math.cos(this.angle);
-        let leftFootY = pelvisY + this.size * 1.5 * Math.abs(Math.sin(this.angle));
-        let rightFootX = this.x + this.size * 1.5 * Math.cos(this.angle);
-        let rightFootY = pelvisY + this.size * 1.5 * Math.abs(Math.cos(this.angle));
-
-        ctx.beginPath();
-        ctx.moveTo(this.x, pelvisY);
-        ctx.lineTo(leftFootX, leftFootY);
-        ctx.moveTo(this.x, pelvisY);
-        ctx.lineTo(rightFootX, rightFootY);
-        ctx.stroke();
-    }
-}
-
-// 오리지널 색상 스틱맨 무리 생성 (The Chosen One, Second Coming, Green, Blue 등 컨셉)
-const stickmen = [
-    new Stickman(200, 300, '#FF3333'), // 빨강 (The Second Coming)
-    new Stickman(400, 200, '#33FF33'), // 초록 (Green)
-    new Stickman(600, 400, '#3333FF'), // 파랑 (Blue)
-    new Stickman(800, 500, '#FFFF33')  // 노랑 (Yellow)
-];
-
-// 간단한 배경 낙서(Alan Becker 애니메이션 특유의 흔적) 저장 배열
-let drawings = [];
-
-function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 가끔 스틱맨이 지나간 자리에 낙서 흔적 남기기
-    stickmen.forEach(s => {
-        if (Math.random() < 0.05) {
-            drawings.push({x: s.x, y: s.y + 35, color: s.color, alpha: 1.0});
-        }
-    });
-
-    // 낙서 그리기 및 수명 깎기
-    drawings.forEach((d, index) => {
-        ctx.strokeStyle = d.color;
-        ctx.globalAlpha = d.alpha;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
-        ctx.stroke();
-        d.alpha -= 0.005; // 서서히 사라짐
-        if (d.alpha <= 0) drawings.splice(index, 1);
-    });
-    ctx.globalAlpha = 1.0; // 투명도 초기화
-
-    // 스틱맨 업데이트 및 렌더링
-    stickmen.forEach(s => {
-        s.update();
-        s.draw();
-    });
-
-    requestAnimationFrame(animate);
-}
-
-animate();
-</script>
-"""
-
-# HTML/JS 코드를 투명 레이어로 화면에 주입
-components.html(stickman_html, height=0)
-
-# 스타일 우회 주입 (HTML 컴포넌트가 UI를 가리지 않도록 숨김 처리 및 전체 화면 스틱맨 허용)
-st.markdown("""
-    <style>
-    iframe {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw !important;
-        height: 100vh !important;
-        border: none;
-        pointer-events: none;
-        z-index: 99999;
-    }
-    </style>
-""", unsafe_allow_index=True)
