@@ -12,7 +12,6 @@ st.set_page_config(
 st.title("✏️ Animation vs. Streamlit")
 st.caption("Alan Becker의 작품 세계처럼, 스틱맨들이 스트림릿 앱 내부를 자유롭게 난입합니다!")
 
-# UI 상호작용용 간단한 스트림릿 컴포넌트 배치
 col1, col2, col3 = st.columns(3)
 with col1:
     st.metric(label="현재 액티브 스틱맨", value="4 마리", delta="▲ 1")
@@ -23,8 +22,7 @@ with col3:
 
 st.text_area("방명록 낙서장", "여기에 글을 쓰면 스틱맨들이 밟고 지나갈지도 모릅니다...")
 
-# 3. 핵심: 안전하게 가독성을 높여 찢어짐 버그를 방지한 오리지널 JS 주입
-# components.html 내부에서 실시간 렌더링되도록 높이를 지정하고 본체를 덮어씌웁니다.
+# 3. 핵심: 주석을 100% 제거하여 찢어짐/한줄합치기 버그를 차단한 HTML
 stickman_html = """
 <div id="canvas-container" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;">
     <canvas id="stickmanCanvas"></canvas>
@@ -41,7 +39,6 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// 마우스 위치 추적 (iframe 보안 무시를 위해 window 자체 마우스 및 부모 마우스 동시 백업)
 let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
 window.addEventListener('mousemove', (e) => {
@@ -54,9 +51,7 @@ try {
         mouse.x = e.clientX;
         mouse.y = e.clientY;
     });
-} catch(e) {
-    // CORS 방지용 안전 장치
-}
+} catch(err) {}
 
 class Stickman {
     constructor(x, y, color) {
@@ -84,3 +79,33 @@ class Stickman {
         if (dist > 50) {
             this.vx += (dx / dist) * 0.2;
             this.vy += (dy / dist) * 0.2;
+        }
+
+        this.vx *= 0.98;
+        this.vy *= 0.98;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 50 || this.x > canvas.width - 50) this.vx *= -1;
+        if (this.y < 50 || this.y > canvas.height - 50) this.vy *= -1;
+
+        this.angle += Math.sqrt(this.vx*this.vx + this.vy*this.vy) * 0.05;
+    }
+
+    draw() {
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.stroke();
+
+        let bodyY = this.y + this.size;
+        let pelvisY = bodyY + this.size * 2;
+        ctx.beginPath();
+        ctx.moveTo(this.x, bodyY);
+        ctx.lineTo(this.x, pelvisY);
+        ctx.stroke();
+
+        let
